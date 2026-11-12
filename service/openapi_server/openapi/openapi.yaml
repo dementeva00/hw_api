@@ -1,0 +1,374 @@
+openapi: 3.0.3
+info:
+  description: API трекера привычек. Пользователь видит и меняет только свои привычки.
+  title: Habit Tracker API
+  version: 1.0.0
+servers:
+- url: http://localhost:8080/v1
+security:
+- bearerAuth: []
+tags:
+- description: Операции с привычками
+  name: habits
+paths:
+  /habits:
+    get:
+      operationId: list_habits
+      parameters:
+      - description: Фильтр по архивным привычкам (по умолчанию false)
+        explode: true
+        in: query
+        name: archived
+        required: false
+        schema:
+          default: false
+          type: boolean
+        style: form
+      - description: Сколько записей вернуть
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 20
+          maximum: 100
+          minimum: 1
+          type: integer
+        style: form
+      - description: Сколько записей пропустить
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          minimum: 0
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Habit"
+                type: array
+          description: Список привычек
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен не передан или невалиден. Мы не знаем, кто ты."
+      summary: Получить список своих привычек
+      tags:
+      - habits
+      x-openapi-router-controller: openapi_server.controllers.habits_controller
+    post:
+      operationId: create_habit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+          description: Привычка создана
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Невалидное тело запроса (например, пустой title или неизве\
+            стная frequency)"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен не передан или невалиден. Мы не знаем, кто ты."
+      summary: Создать новую привычку
+      tags:
+      - habits
+      x-openapi-router-controller: openapi_server.controllers.habits_controller
+  /habits/{habitId}:
+    delete:
+      operationId: delete_habit
+      parameters:
+      - description: Идентификатор привычки
+        explode: false
+        in: path
+        name: habitId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: "Привычка удалена, тела ответа нет"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен не передан или невалиден. Мы не знаем, кто ты."
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен валиден, но привычка принадлежит другому пользовател\
+            ю. Мы знаем, кто ты, но нельзя."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Привычки с таким id не существует
+      summary: Удалить привычку
+      tags:
+      - habits
+      x-openapi-router-controller: openapi_server.controllers.habits_controller
+    get:
+      operationId: get_habit
+      parameters:
+      - description: Идентификатор привычки
+        explode: false
+        in: path
+        name: habitId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+          description: Привычка найдена
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен не передан или невалиден. Мы не знаем, кто ты."
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен валиден, но привычка принадлежит другому пользовател\
+            ю. Мы знаем, кто ты, но нельзя."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Привычки с таким id не существует
+      summary: Получить одну привычку по id
+      tags:
+      - habits
+      x-openapi-router-controller: openapi_server.controllers.habits_controller
+    patch:
+      operationId: update_habit
+      parameters:
+      - description: Идентификатор привычки
+        explode: false
+        in: path
+        name: habitId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitUpdate"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+          description: Привычка обновлена
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Невалидное тело запроса
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен не передан или невалиден. Мы не знаем, кто ты."
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: "Токен валиден, но привычка принадлежит другому пользовател\
+            ю. Мы знаем, кто ты, но нельзя."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Привычки с таким id не существует
+      summary: "Изменить привычку (название, описание, периодичность, архив)"
+      tags:
+      - habits
+      x-openapi-router-controller: openapi_server.controllers.habits_controller
+components:
+  responses:
+    Unauthorized:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+      description: "Токен не передан или невалиден. Мы не знаем, кто ты."
+    Forbidden:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+      description: "Токен валиден, но привычка принадлежит другому пользователю. М\
+        ы знаем, кто ты, но нельзя."
+    NotFound:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+      description: Привычки с таким id не существует
+  schemas:
+    Habit:
+      example:
+        id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        title: Пить воду
+        description: 2 литра в день
+        frequency: daily
+        archived: false
+        createdAt: 2026-11-11T09:00:00Z
+      properties:
+        id:
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+          format: uuid
+          title: id
+          type: string
+        title:
+          example: Пить воду
+          title: title
+          type: string
+        description:
+          example: 2 литра в день
+          title: description
+          type: string
+        frequency:
+          $ref: "#/components/schemas/Frequency"
+        archived:
+          example: false
+          title: archived
+          type: boolean
+        createdAt:
+          example: 2026-11-11T09:00:00Z
+          format: date-time
+          title: createdAt
+          type: string
+      required:
+      - archived
+      - createdAt
+      - frequency
+      - id
+      - title
+      title: Habit
+      type: object
+    HabitCreate:
+      example:
+        title: Пить воду
+        description: 2 литра в день
+        frequency: daily
+      properties:
+        title:
+          example: Пить воду
+          maxLength: 100
+          minLength: 1
+          title: title
+          type: string
+        description:
+          example: 2 литра в день
+          maxLength: 500
+          title: description
+          type: string
+        frequency:
+          $ref: "#/components/schemas/Frequency"
+      required:
+      - frequency
+      - title
+      title: HabitCreate
+      type: object
+    HabitUpdate:
+      description: "Все поля необязательные, меняются только переданные"
+      example:
+        title: title
+        description: description
+        frequency: daily
+        archived: true
+      properties:
+        title:
+          maxLength: 100
+          minLength: 1
+          title: title
+          type: string
+        description:
+          maxLength: 500
+          title: description
+          type: string
+        frequency:
+          $ref: "#/components/schemas/Frequency"
+        archived:
+          title: archived
+          type: boolean
+      title: HabitUpdate
+      type: object
+    Frequency:
+      enum:
+      - daily
+      - weekly
+      title: Frequency
+      type: string
+    Error:
+      example:
+        code: not_found
+        message: Привычка не найдена
+      properties:
+        code:
+          example: not_found
+          title: code
+          type: string
+        message:
+          example: Привычка не найдена
+          title: message
+          type: string
+      required:
+      - code
+      - message
+      title: Error
+      type: object
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http
+      x-bearerInfoFunc: openapi_server.controllers.security_controller.info_from_bearerAuth

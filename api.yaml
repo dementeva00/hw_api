@@ -1,0 +1,248 @@
+openapi: 3.0.3
+info:
+  title: Habit Tracker API
+  description: API трекера привычек. Пользователь видит и меняет только свои привычки.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/v1
+
+tags:
+  - name: habits
+    description: Операции с привычками
+
+security:
+  - bearerAuth: []
+
+paths:
+  /habits:
+    get:
+      tags: [habits]
+      summary: Получить список своих привычек
+      operationId: listHabits
+      parameters:
+        - name: archived
+          in: query
+          description: Фильтр по архивным привычкам (по умолчанию false)
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          description: Сколько записей вернуть
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Сколько записей пропустить
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Список привычек
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Habit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [habits]
+      summary: Создать новую привычку
+      operationId: createHabit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitCreate'
+      responses:
+        '201':
+          description: Привычка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+        '400':
+          description: Невалидное тело запроса (например, пустой title или неизвестная frequency)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /habits/{habitId}:
+    parameters:
+      - name: habitId
+        in: path
+        required: true
+        description: Идентификатор привычки
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [habits]
+      summary: Получить одну привычку по id
+      operationId: getHabit
+      responses:
+        '200':
+          description: Привычка найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [habits]
+      summary: Изменить привычку (название, описание, периодичность, архив)
+      operationId: updateHabit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitUpdate'
+      responses:
+        '200':
+          description: Привычка обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+        '400':
+          description: Невалидное тело запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [habits]
+      summary: Удалить привычку
+      operationId: deleteHabit
+      responses:
+        '204':
+          description: Привычка удалена, тела ответа нет
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Habit:
+      type: object
+      required: [id, title, frequency, archived, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        title:
+          type: string
+          example: Пить воду
+        description:
+          type: string
+          example: 2 литра в день
+        frequency:
+          $ref: '#/components/schemas/Frequency'
+        archived:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-11-11T09:00:00Z'
+
+    HabitCreate:
+      type: object
+      required: [title, frequency]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Пить воду
+        description:
+          type: string
+          maxLength: 500
+          example: 2 литра в день
+        frequency:
+          $ref: '#/components/schemas/Frequency'
+
+    HabitUpdate:
+      type: object
+      description: Все поля необязательные, меняются только переданные
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        frequency:
+          $ref: '#/components/schemas/Frequency'
+        archived:
+          type: boolean
+
+    Frequency:
+      type: string
+      enum: [daily, weekly]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: not_found
+        message:
+          type: string
+          example: Привычка не найдена
+
+  responses:
+    Unauthorized:
+      description: Токен не передан или невалиден. Мы не знаем, кто ты.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Токен валиден, но привычка принадлежит другому пользователю. Мы знаем, кто ты, но нельзя.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Привычки с таким id не существует
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
